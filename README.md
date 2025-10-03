@@ -143,14 +143,13 @@ pip install -r requirements.txt
 
 ```json
 {
-  "metrics": [
-    {
+  "metrics": {
       "static": {
         "cpu": {"logical_cores": 16, "physical_cores": 8, "..."},
         "memory": {"total": 17179869184, "..."},
-        "disk": {"..."),
-        "network": {"..."),
-        "gpu": {"..."),
+        "disk": {"..."},
+        "network": {"..."},
+        "gpu": {"..."},
         "system": {"..."}
       },
       "dynamic": {
@@ -174,12 +173,11 @@ pip install -r requirements.txt
             "..."
           }
         },
-        "network": {"..."),
-        "gpu": {"..."),
+        "network": {"..."},
+        "gpu": {"..."},
         "system": {"..."}
-      }
     }
-  ]
+  }
 }
 ```
 
