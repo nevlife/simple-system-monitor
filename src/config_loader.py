@@ -25,3 +25,7 @@ def get_collector_config(config: Dict[str, Any]) -> Dict[str, Any]:
 
 def get_logging_config(config: Dict[str, Any]) -> Dict[str, Any]:
     return config.get('logging', {})
+
+
+def get_client_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    return config.get('client', {})

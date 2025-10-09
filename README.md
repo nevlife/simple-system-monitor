@@ -1,221 +1,132 @@
-# System Monitor
+# System Monitor Agent
 
-Modern Python system monitoring tool with HTTP transmission capabilities.
+## 프로젝트 설명
 
-## Requirements
+이 프로젝트는 Python으로 작성된 간단한 시스템 모니터링 에이전트입니다. 로컬 시스템의 다양한 성능 지표(CPU, 메모리, 디스크, 네트워크 등)를 주기적으로 수집하여 지정된 HTTP 서버로 전송합니다.
 
-- Python 3.10+
-- psutil
-- requests
-- pyyaml
+## 주요 기능
 
-## Installation
+- **포괄적인 메트릭 수집**:
+  - **CPU**: 사용률, 코어 정보, 현재 주파수, 온도 등
+  - **메모리**: 전체/사용/가능 메모리, 사용률, 스왑 메모리 정보
+  - **디스크**: 파티션별 사용량, 전체 디스크 I/O
+  - **네트워크**: 인터페이스별 상태, 속도, 초당 트래픽, 누적 데이터 및 오류
+  - **GPU**: NVIDIA GPU 사용률, 메모리 사용량, 온도, 전력 (nvidia-smi 필요)
+  - **시스템**: 호스트 이름, OS 정보, 부팅 시간, 현재 접속자 등
+- **유연한 설정**: `config.yaml` 파일을 통해 수집 간격, 서버 정보, 각 메트릭 모듈 활성화 여부를 쉽게 설정할 수 있습니다.
+- **HTTP 전송**: 수집된 데이터를 지정된 서버의 API 엔드포인트로 JSON 형식으로 전송합니다. 재시도 로직이 포함되어 있습니다.
 
+## 요구사항
+
+프로젝트를 실행하기 위해 다음 라이브러리가 필요합니다.
+
+- `psutil`
+- `requests`
+- `pyyaml`
+
+다음 명령어로 필요한 라이브러리를 설치할 수 있습니다.
 ```bash
-# Clone repository
-git clone https://github.com/yourusername/system-monitor.git
-cd system-monitor
-
-# Install dependencies
 pip install -r requirements.txt
 ```
+**참고**: GPU 메트릭을 수집하려면 시스템에 `nvidia-smi` CLI 도구(NVIDIA 드라이버에 포함)가 설치되어 있고, PATH에 잡혀 있어야 합니다.
 
-## Quick Start
+## 설정
 
-1.  **Create Configuration File**: Create a file named `config.yaml` in the project root with the following content. Adjust the values as needed.
+프로젝트 루트 디렉토리에 `config.yaml` 파일을 생성하고 아래 형식에 맞게 내용을 작성해야 합니다.
 
-    ```yaml
-    server:
-      url: http://localhost:8000
-      endpoint: /api/metrics
-      timeout: 10
-      max_retries: 3
+```yaml
+# config.yaml
 
-    collector:
-      interval: 1.0
-      batch_size: 10
-      modules:
-        cpu: true
-        memory: true
-        disk: true
-        network: true
-        gpu: true
-        system: true
+# 데이터를 전송할 서버 정보
+server:
+  url: "http://127.0.0.1:8000"
+  endpoint: "/api/metrics/"
+  timeout: 10
+  max_retries: 3
 
-    logging:
-      level: INFO
-      file: null
-    ```
+# 데이터 수집기 설정
+collector:
+  interval: 5         # 데이터 수집 간격 (초)
+  batch_size: 10      # 몇 개의 데이터를 모아서 전송할지 결정
+  modules:            # 각 모듈 활성화 여부
+    cpu: true
+    memory: true
+    disk: true
+    network: true
+    gpu: false        # NVIDIA GPU가 없는 경우 false로 설정
+    system: true
 
-2.  **Run Monitor**:
-    ```bash
-    python main.py
-    ```
+# 클라이언트 식별자
+client:
+  id: "my-first-agent" # 이 에이전트를 식별할 고유 ID
 
-## Configuration
+# 로깅 설정 (현재 미사용)
+logging:
+  level: "INFO"
+```
 
-## Collected Metrics
+## 사용법
 
-### Static Metadata (Collected Once)
+설정이 완료되면 다음 명령어로 에이전트를 실행합니다.
 
-**CPU:**
-- logical_cores, physical_cores: count
-- freq_min, freq_max: MHz
+```bash
+python main.py
+```
 
-**Memory:**
-- total, swap_total: bytes
+에이전트는 `config.yaml` 파일에 설정된 `interval` 간격으로 계속 실행되며, `Ctrl+C`를 눌러 중지할 수 있습니다.
 
-**Disk:**
-- partitions: [{device, mountpoint, fstype, opts}]
-- devices: [device names]
+## 전송 데이터 구조 예시
 
-**Network:**
-- interfaces: [interface names]
-- mtu: {interface: bytes}
-- speed: {interface: Mbps}
-
-**GPU (NVIDIA):**
-- count: int
-- names: [GPU names]
-
-**System:**
-- hostname, os info, python_version
-- boot_time: Unix timestamp
-
-### Dynamic Metrics (Collected Periodically)
-
-**CPU:**
-- usage_percent: %
-- freq_current: MHz
-- temperature: °C (Linux only)
-- load_average: [1min, 5min, 15min] (Linux/macOS)
-- user, system, idle, iowait: seconds
-- ctx_switches, interrupts: count
-
-**Memory:**
-- total, available, used, free: bytes
-- percent: %
-- active, inactive, buffers, cached, shared, slab: bytes (Linux only)
-- swap_used, swap_free, swap_percent
-- swap_sin, swap_sout: bytes (Linux only)
-
-**Disk:**
-- **usage_per_partition**: A dictionary mapping each partition's mountpoint to its usage stats (`total`, `used`, `free`, `percent`) or `null` if inaccessible.
-- **io_total**: Global disk IO counters (`read_count`, `write_count`, `read_bytes`, `write_bytes`, etc.).
-
-**Network:**
-- bytes_sent, bytes_recv: bytes
-- packets_sent, packets_recv: count
-- errin, errout, dropin, dropout: count
-- connection_count: int
-
-**GPU (NVIDIA):**
-- gpus: [{index, utilization_percent, memory_used_mb, memory_total_mb, temperature, power_watts}]
-
-**System:**
-- timestamp: ISO 8601
-- uptime: seconds
-- users: [{name, terminal, host, started}]
-
-## Architecture
-
-### Platform-Specific Behavior
-
-**Linux:**
-- Full metrics support
-- CPU temperature sensors
-- Memory: active/inactive/buffers/cached/shared/slab
-- Disk: merged I/O counts, busy time
-- Network: all metrics
-
-**macOS:**
-- CPU: load_average, iowait
-- Memory: active/inactive
-- Disk/Network: basic metrics
-
-**Windows:**
-- Basic CPU/Memory/Disk/Network metrics
-- No temperature, load_average, iowait
-
-## API Format
-
-**Payload Structure:**
+서버로 전송되는 데이터는 다음과 같은 JSON 구조를 가집니다.
 
 ```json
 {
-  "metrics": {
-      "static": {
-        "cpu": {"logical_cores": 16, "physical_cores": 8, "..."},
-        "memory": {"total": 17179869184, "..."},
-        "disk": {"..."},
-        "network": {"..."},
-        "gpu": {"..."},
-        "system": {"..."}
-      },
-      "dynamic": {
-        "cpu": {"usage_percent": 25.5, "temperature": 45.2, "..."},
-        "memory": {"used": 8589934592, "percent": 50.0, "..."},
-        "disk": {
-          "usage_per_partition": {
-            "C:\\": {
-              "total": 999219523584,
-              "used": 184818352128,
-              "free": 814401171456,
-              "percent": 18.5
-            },
-            "D:\\": null
-          },
-          "io_total": {
-            "read_count": 7573416,
-            "write_count": 18291522,
-            "read_bytes": 448069577728,
-            "write_bytes": 554389483520,
-            "..."
-          }
-        },
-        "network": {"..."},
-        "gpu": {"..."},
-        "system": {"..."}
+  "client_id": "my-first-agent",
+  "cpu": {
+    "usage_percent": 15.4,
+    "freq_current": 3400.0,
+    "temperature": -1,
+    "load_average": -1,
+    "iowait": -1,
+    "user": 12345.6,
+    "system": 6789.0,
+    "idle": 98765.4,
+    "ctx_switches": 100000,
+    "interrupts": 50000,
+    "soft_interrupts": 20000
+  },
+  "memory": {
+    "total": 16000000000,
+    "available": 8000000000,
+    "percent": 50.0,
+    "...": "..."
+  },
+  "disk": {
+    "usage_per_partition": {
+      "C:\\": {
+        "total": 500000000000,
+        "used": 250000000000,
+        "percent": 50.0,
+        "...": "..."
+      }
+    },
+    "io_total": {
+      "read_count": 12345,
+      "write_count": 54321,
+      "...": "..."
     }
+  },
+  "network": {
+    "summary": { "...": "..." },
+    "interfaces": { "...": "..." }
+  },
+  "system": {
+    "timestamp": "2025-10-03T18:00:00.000000",
+    "uptime": 3600.0,
+    "...": "..."
+  },
+  "gpu": {
+      "gpus": []
   }
 }
 ```
-
-## Advanced Usage
-
-### Custom Collector
-
-```python
-from src.collector import MetricsCollector
-
-collector = MetricsCollector(enabled_modules={
-    'cpu': True,
-    'memory': True,
-    'disk': False,
-    'network': False,
-    'gpu': False,
-    'system': True
-})
-
-metrics = collector.get_full_metrics()
-print(metrics)
-```
-
-### Custom Transmitter
-
-```python
-from src.transmitter import HTTPTransmitter
-
-transmitter = HTTPTransmitter(
-    server_url='https://api.example.com',
-    endpoint='/v1/telemetry',
-    timeout=30,
-    max_retries=5
-)
-
-transmitter.send_batch([metrics])
-```
-
-## License
-
-MIT License

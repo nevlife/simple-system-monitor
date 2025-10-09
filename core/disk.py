@@ -52,7 +52,7 @@ class DiskUsage(TypedDict):
 
 def get_disk_static_metadata() -> DiskStatic:
     partitions = []
-    for part in psutil.disk_partitions(all=False):
+    for part in psutil.disk_partitions(all=True):
         partitions.append({
             'device': part.device,
             'mountpoint': part.mountpoint,

@@ -1,6 +1,7 @@
 """Main monitoring service."""
 
 import time
+import json
 from typing import Dict, Any, List
 
 from src.collector import MetricsCollector
@@ -23,9 +24,15 @@ class MonitorService:
         print(f"Starting system monitor...")
         print(f"Interval: {self.interval}s, Batch size: {self.batch_size}")
 
+        # printed_once = False
         try:
             while self.running:
                 metrics = self.collector.get_full_metrics()
+
+                # if not printed_once:
+                #     print(json.dumps(metrics, indent=2, ensure_ascii=False))
+                #     printed_once = True
+
                 self.buffer.append(metrics)
 
                 if len(self.buffer) >= self.batch_size:
